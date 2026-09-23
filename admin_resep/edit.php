@@ -387,7 +387,7 @@ if (isset($_POST['update'])) {
 
                                 <button type="submit" name="update" class="btn btn-primary m-t-15 waves-effect">
                                     <i class="material-icons">save</i>
-                                    <span>SIMPAN PERUBAHAN</span>
+                                    <span>SIMPAN MENU</span>
                                 </button>
                                 <a href="index.php" class="btn btn-default m-t-15 waves-effect">
                                     <i class="material-icons">arrow_back</i>

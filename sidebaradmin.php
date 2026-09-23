@@ -56,7 +56,7 @@ $current_page = $_SERVER['REQUEST_URI'];
             <li class="<?= (strpos($current_page, 'admin_kategori_menu') !== false) ? 'active' : ''; ?>">
                 <a href="../admin_kategori_menu/index.php">
                     <i class="material-icons">category</i>
-                    <span>Kategori Menu</span>
+                    <span>Pilihan Menu</span>
                 </a>
             </li>
 
