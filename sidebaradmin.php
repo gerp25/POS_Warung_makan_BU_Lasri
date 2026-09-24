@@ -28,13 +28,11 @@ $current_page = $_SERVER['REQUEST_URI'];
 
     <!-- Menu Navigasi -->
     <div class="menu">
-        <ul class="list">
-            <li class="header">NAVIGASI UTAMA</li>
-            
+        <ul class="list">    
             <li class="<?= (strpos($current_page, 'home_admin') !== false) ? 'active' : ''; ?>">
                 <a href="../home_admin/index.php">
                     <i class="material-icons">home</i>
-                    <span>Dasbor</span>
+                    <span>Dashboard</span>
                 </a>
             </li>
             

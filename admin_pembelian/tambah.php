@@ -19,32 +19,34 @@ if (isset($_POST['simpan_transaksi'])) {
     $tgl_pembelian =$_POST['tgl_pembelian'];
     $id_supplier   =$_POST['id_supplier'];
 
-    $id_bahan_arr    =$_POST['id_bahan'];
-    $jumlah_arr      =$_POST['jumlah'];
-    $satuan_arr      =$_POST['satuan'];
-    $harga_satuan_arr=$_POST['harga_satuan'];
+    $id_bahan_arr     =$_POST['id_bahan'];
+    $jumlah_arr       =$_POST['jumlah'];
+    $satuan_arr       =$_POST['satuan'];
+    $harga_satuan_arr =$_POST['harga_satuan'];
 
-    // Hitung Total Harga Keseluruhan Transaksi
     $grand_total = 0;
-    for ($i = 0; $i < count($id_bahan_arr); $i++) {$grand_total += ($jumlah_arr[$i] * $harga_satuan_arr[$i]);
+    for ($i = 0; $i < count($id_bahan_arr); $i++) {$grand_total += ((float)$jumlah_arr[$i] * (float)$harga_satuan_arr[$i]);
     }
 
-    // menambah Header Pembelian
     $q_header = "INSERT INTO pembelian (no_faktur, tgl_pembelian, id_supplier, total_harga) VALUES ('$no_faktur', '$tgl_pembelian', '$id_supplier', '$grand_total')";
     if (mysqli_query($con,$q_header)) {
         $id_pembelian = mysqli_insert_id($con);
 
-        // Insert Setiap Item Detail Pembelian
-        for ($i = 0; $i < count($id_bahan_arr); $i++) {
+      for ($i = 0; $i < count($id_bahan_arr); $i++) {
             $id_bahan     = $id_bahan_arr[$i];
-            $jumlah       = $jumlah_arr[$i];
-            $harga_satuan = $harga_satuan_arr[$i];
+            $jumlah       = (float)$jumlah_arr[$i];
+            $harga_satuan = (float)$harga_satuan_arr[$i];
             $subtotal     = $jumlah * $harga_satuan;
 
             if (!empty($id_bahan)) {
+                // 1. Simpan detail pembelian
                 $query_cek_detail = "INSERT INTO pembelian_detail (id_pembelian, id_bahan, jumlah, harga_satuan, subtotal) 
                                     VALUES ('$id_pembelian', '$id_bahan', '$jumlah', '$harga_satuan', '$subtotal')";
                 mysqli_query($con, $query_cek_detail);
+
+                // Update stok sekaligus perbarui harga_satuan terbaru
+                $query_update_stok = "UPDATE bahan_baku SET stok = stok + $jumlah, harga_satuan = '$harga_satuan' WHERE id = '$id_bahan'";
+                mysqli_query($con, $query_update_stok);
             }
         }
 
@@ -53,11 +55,10 @@ if (isset($_POST['simpan_transaksi'])) {
     }
 }
 
-// Ambil data bahan baku untuk template opsi select
+// Ambil data bahan baku untuk opsi select (menambahkan data-satuan dan data-harga)
 $query_bahan = mysqli_query($con, "SELECT * FROM bahan_baku ORDER BY nama_bahan ASC");
 $options_bahan = "";
-while ($bahan_item = mysqli_fetch_array($query_bahan)) {
-    $options_bahan .= "<option value='".$bahan_item['id']."'>".$bahan_item['nama_bahan']."</option>";
+while ($bahan_item = mysqli_fetch_array($query_bahan)) {$satuan_val = htmlspecialchars($bahan_item['satuan'], ENT_QUOTES);$harga_val  = htmlspecialchars($bahan_item['harga_satuan'], ENT_QUOTES);$options_bahan .= "<option value='{$bahan_item['id']}' data-satuan='{$satuan_val}' data-harga='{$harga_val}'>{$bahan_item['nama_bahan']}</option>";
 }
 ?>
 
@@ -114,7 +115,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                             <h2>FORM TRANSAKSI PEMBELIAN</h2>
                         </div>
                         <div class="body">
-                            <form action="tambah.php" method="POST">
+                            <form action="" method="POST">
                                 <div class="row clearfix">
                                     <div class="col-md-4">
                                         <label for="no_faktur">No. Faktur</label>
@@ -154,7 +155,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                                         <h2 class="card-inside-title" style="margin-top:0;">PILIH BAHAN BAKU</h2>
                                     </div>
                                     <div class="col-xs-6 text-right">
-                                        <button type="button" class="btn btn-success waves-effect" onclick="tambahBarisBahan()">
+                                        <button type="button" id="btn-tambah-bahan" class="btn btn-success waves-effect">
                                             <i class="material-icons">add</i> <span>Tambah Bahan Baku</span>
                                         </button>
                                     </div>
@@ -166,7 +167,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                                         <div class="col-md-3 col-sm-12">
                                             <label>Nama Bahan Baku</label>
                                             <div class="form-group">
-                                                <select name="id_bahan[]" class="form-control show-tick" required>
+                                                <select name="id_bahan[]" class="form-control show-tick select-bahan" required>
                                                     <option value="">-- Pilih Bahan Baku --</option>
                                                     <?= $options_bahan; ?>
                                                 </select>
@@ -177,7 +178,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                                             <label>Jumlah</label>
                                             <div class="form-group">
                                                 <div class="form-line">
-                                                    <input type="number" name="jumlah[]" class="form-control input-jumlah" min="1" step="any" required placeholder="Jumlah" oninput="hitungSubtotal(this)">
+                                                    <input type="number" name="jumlah[]" class="form-control input-jumlah" min="1" step="any" required placeholder="Jumlah">
                                                 </div>
                                             </div>
                                         </div>
@@ -185,7 +186,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                                         <div class="col-md-2 col-sm-12">
                                             <label>Satuan</label>
                                             <div class="form-group">
-                                                <select name="satuan[]" class="form-control show-tick" required>
+                                                <select name="satuan[]" class="form-control show-tick select-satuan" required>
                                                     <option value="">-- Pilih Satuan --</option>
                                                     <option value="Kilogram (kg)">Kilogram (kg)</option>
                                                     <option value="Gram (gram)">Gram (gram)</option>
@@ -202,7 +203,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                                             <label>Harga Satuan (Rp)</label>
                                             <div class="form-group">
                                                 <div class="form-line">
-                                                    <input type="number" name="harga_satuan[]" class="form-control input-harga" min="0" required placeholder="Harga Satuan" oninput="hitungSubtotal(this)">
+                                                    <input type="number" name="harga_satuan[]" class="form-control input-harga" min="0" required placeholder="Harga Satuan">
                                                 </div>
                                             </div>
                                         </div>
@@ -219,7 +220,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                                         <div class="col-md-1 col-sm-2 text-center">
                                             <label>&nbsp;</label>
                                             <div class="form-group">
-                                                <button type="button" class="btn btn-danger btn-circle waves-effect waves-circle waves-float" onclick="hapusBarisBahan(this)" style="display:none;">
+                                                <button type="button" class="btn btn-danger btn-circle waves-effect waves-circle waves-float btn-hapus-baris" style="display:none;">
                                                     <i class="material-icons">delete</i>
                                                 </button>
                                             </div>
@@ -251,30 +252,83 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
     <script src="../AdminBSB/js/admin.js"></script>
 
     <script>
-        // Template HTML untuk baris bahan baku baru
-        var optionsBahanHTML = `<?= $options_bahan; ?>`;
+        // 1. Hitung Subtotal secara langsung saat input Jumlah atau Harga berubah
+        $(document).on('input', '.input-jumlah, .input-harga', function() {
+            var baris = $(this).closest('.baris-bahan');
+            var jumlah = parseFloat(baris.find('.input-jumlah').val()) || 0;
+            var harga = parseFloat(baris.find('.input-harga').val()) || 0;
+            var subtotal = jumlah * harga;
 
-        function tambahBarisBahan() {
-            var templateHtml = `
+            baris.find('.input-subtotal').val(subtotal.toLocaleString('id-ID'));
+        });
+
+        // Auto fill Satuan dan Harga Satuan ketika Bahan Baku dipilih
+        $(document).on('change', 'select[name="id_bahan[]"]', function() {
+            var selectedOption = $(this).find('option:selected');
+            var baris = $(this).closest('.baris-bahan');
+            
+            var satuan = selectedOption.data('satuan');
+            var harga = selectedOption.data('harga');
+
+            if (satuan !== undefined && harga !== undefined) {
+                // Isi nilai harga satuan
+                baris.find('.input-harga').val(harga);
+
+                var selectSatuan = baris.find('select[name="satuan[]"]');
+                var searchSatuan = satuan.toString().trim().toLowerCase();
+
+                // Cari opsi yang persis cocok
+                var matchedVal = "";
+                selectSatuan.find('option').each(function() {
+                    var optVal  = $(this).val().toLowerCase();
+                    var optText = $(this).text().toLowerCase();
+
+                    // Cek jika persis sama dengan value atau text (misal "gram" dengan "gram (gram)")
+                    if (optVal === searchSatuan || optText === searchSatuan || optText.startsWith(searchSatuan + " ") || optText.includes("(" + searchSatuan + ")")) {
+                        matchedVal = $(this).val();
+                        return false; // Hentikan loop jika sudah ketemu match pas
+                    }
+                });
+
+                if (matchedVal) {
+                    selectSatuan.val(matchedVal);
+                } else {
+                    selectSatuan.val("");
+                }
+
+                // Refresh Bootstrap Select agar UI terbarui
+                if ($.fn.selectpicker) {
+                    selectSatuan.selectpicker('refresh');
+                }
+
+                // Hitung ulang subtotal
+                baris.find('.input-harga').trigger('input');
+            }
+        });
+
+        // 3. Tambah Baris Bahan Baku
+        $('#btn-tambah-bahan').click(function() {
+            var optionsBahan = `<?= $options_bahan; ?>`;
+            var html = `
             <div class="row clearfix baris-bahan">
                 <div class="col-md-3 col-sm-12">
                     <div class="form-group">
-                        <select name="id_bahan[]" class="form-control show-tick" required>
+                        <select name="id_bahan[]" class="form-control show-tick select-bahan" required>
                             <option value="">-- Pilih Bahan Baku --</option>
-                            ${optionsBahanHTML}
+                            ` + optionsBahan + `
                         </select>
                     </div>
                 </div>
                 <div class="col-md-2 col-sm-12">
                     <div class="form-group">
                         <div class="form-line">
-                            <input type="number" name="jumlah[]" class="form-control input-jumlah" min="1" step="any" required placeholder="Jumlah" oninput="hitungSubtotal(this)">
+                            <input type="number" name="jumlah[]" class="form-control input-jumlah" min="1" step="any" required placeholder="Jumlah">
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2 col-sm-12">
                     <div class="form-group">
-                        <select name="satuan[]" class="form-control show-tick" required>
+                        <select name="satuan[]" class="form-control show-tick select-satuan" required>
                             <option value="">-- Pilih Satuan --</option>
                             <option value="Kilogram (kg)">Kilogram (kg)</option>
                             <option value="Gram (gram)">Gram (gram)</option>
@@ -289,7 +343,7 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                 <div class="col-md-2 col-sm-12">
                     <div class="form-group">
                         <div class="form-line">
-                            <input type="number" name="harga_satuan[]" class="form-control input-harga" min="0" required placeholder="Harga Satuan" oninput="hitungSubtotal(this)">
+                            <input type="number" name="harga_satuan[]" class="form-control input-harga" min="0" required placeholder="Harga Satuan">
                         </div>
                     </div>
                 </div>
@@ -302,44 +356,32 @@ while ($bahan_item = mysqli_fetch_array($query_bahan)) {
                 </div>
                 <div class="col-md-1 col-sm-2 text-center">
                     <div class="form-group">
-                        <button type="button" class="btn btn-danger btn-circle waves-effect waves-circle waves-float" onclick="hapusBarisBahan(this)">
+                        <button type="button" class="btn btn-danger btn-circle waves-effect waves-circle waves-float btn-hapus-baris">
                             <i class="material-icons">delete</i>
                         </button>
                     </div>
                 </div>
             </div>`;
 
-            $('#container-bahan').append(templateHtml);
-            
-            // Inisialisasi ulang plugin Bootstrap Select untuk elemen dropdown baru
+            $('#container-bahan').append(html);
+
+            // Inisialisasi ulang Bootstrap Select
             if ($.fn.selectpicker) {
                 $('.show-tick').selectpicker('refresh');
             }
-            cekTombolHapus();
-        }
 
-        function hapusBarisBahan(btn) {
-            $(btn).closest('.baris-bahan').remove();
-            cekTombolHapus();
-        }
-
-        function cekTombolHapus() {
-            var totalBaris = $('.baris-bahan').length;
-            if (totalBaris === 1) {
-                $('.baris-bahan').find('.btn-danger').hide();
-            } else {
-                $('.baris-bahan').find('.btn-danger').show();
+            // Tampilkan tombol hapus jika baris lebih dari 1
+            if ($('.baris-bahan').length > 1) {$('.baris-bahan').find('.btn-hapus-baris').show();
             }
-        }
+        });
 
-        function hitungSubtotal(elem) {
-            var baris = $(elem).closest('.baris-bahan');
-            var jumlah = parseFloat(baris.find('.input-jumlah').value) || parseFloat(baris.find('.input-jumlah').val()) || 0;
-            var harga = parseFloat(baris.find('.input-harga').value) || parseFloat(baris.find('.input-harga').val()) || 0;
-            var subtotal = jumlah * harga;
+        // 4. Hapus Baris Bahan Baku
+        $(document).on('click', '.btn-hapus-baris', function() {$(this).closest('.baris-bahan').remove();
 
-            baris.find('.input-subtotal').val(subtotal.toLocaleString('id-ID'));
-        }
+            // Sembunyikan tombol hapus jika tinggal 1 baris
+            if ($('.baris-bahan').length === 1) {$('.baris-bahan').find('.btn-hapus-baris').hide();
+            }
+        });
     </script>
 </body>
 

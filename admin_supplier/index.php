@@ -141,6 +141,8 @@ if (isset($_GET['hapus'])) {
                     </div>
                 </div>
             </div>
+            <!-- MEMANGGIL FOOTER -->
+            <?php include '../footer.php'; ?>
         </div>
     </section>
 
@@ -181,6 +183,7 @@ if (isset($_GET['hapus'])) {
             </div>
         </div>
     </div>
+    
 
     <!-- Jquery Core Js -->
     <script src="../AdminBSB/plugins/jquery/jquery.min.js"></script>

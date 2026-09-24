@@ -98,10 +98,34 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
         .block-header-flex h2 {
             margin: 0;
+        }
+
+        /* Styling Search Bar */
+        .search-container {
+            position: relative;
+            min-width: 280px;
+        }
+
+        .search-container input {
+            padding-left: 38px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            box-shadow: none !important;
+        }
+
+        .search-container .material-icons {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            font-size: 20px;
         }
     </style>
 </head>
@@ -116,12 +140,18 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
 
     <section class="content">
         <div class="container-fluid">
-            <!-- Header dengan Tombol Tambah Menu -->
+            <!-- Header dengan Search Bar -->
             <div class="block-header block-header-flex">
                 <h2>DAFTAR MENU MASAKAN</h2>
+                
+                <!-- Input Search Bar -->
+                <div class="search-container">
+                    <i class="material-icons">search</i>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Cari menu masakan...">
+                </div>
             </div>
 
-            <div class="row clearfix">
+            <div class="row clearfix" id="menuList">
                 <?php
                 // Mengambil data langsung dari tabel menu
                 $query_menu = mysqli_query($con, "SELECT * FROM menu ORDER BY nama_menu ASC");
@@ -131,7 +161,7 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
                         $gambar_menu = !empty($menu['gambar']) ? '../image/' . $menu['gambar'] : '../image/sayur_dan_lauk.png';
                         $harga = isset($menu['harga']) ? 'Rp ' . number_format($menu['harga'], 0, ',', '.') : '-';
                 ?>
-                <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12 menu-item">
                     <div class="menu-card">
                         <div class="menu-img-container">
                             <img src="<?= $gambar_menu; ?>" alt="<?= htmlspecialchars($menu['nama_menu']); ?>">
@@ -153,13 +183,51 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
                     echo '<div class="col-md-12 text-center"><p>Belum ada menu masakan yang tersedia.</p></div>';
                 }
                 ?>
+                
+                <!-- Pesan ketika hasil pencarian tidak ditemukan -->
+                <div id="noResults" class="col-md-12 text-center" style="display: none;">
+                    <p class="text-muted">Menu yang anda cari tidak ditemukan.</p>
+                </div>
             </div>
+
+            <!-- MEMANGGIL FOOTER -->
+            <?php include '../footer.php'; ?>
         </div>
     </section>
+
+    
 
     <script src="../AdminBSB/plugins/jquery/jquery.min.js"></script>
     <script src="../AdminBSB/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="../AdminBSB/plugins/node-waves/waves.js"></script>
     <script src="../AdminBSB/js/admin.js"></script>
+
+    <!-- Script Filter Pencarian Real-time -->
+    <script>
+        $(document).ready(function() {
+            $('#searchInput').on('keyup', function() {
+                var value = $(this).val().toLowerCase().trim();
+                var visibleCount = 0;
+
+                $('.menu-item').each(function() {
+                    var title = $(this).find('.menu-title').text().toLowerCase();
+                    var desc = $(this).find('.menu-desc').text().toLowerCase();
+
+                    if (title.indexOf(value) > -1 || desc.indexOf(value) > -1) {
+                        $(this).show();
+                        visibleCount++;
+                    } else {
+                        $(this).hide();
+                    }
+                });
+
+                if (visibleCount === 0) {
+                    $('#noResults').show();
+                } else {
+                    $('#noResults').hide();
+                }
+            });
+        });
+    </script>
 </body>
 </html>

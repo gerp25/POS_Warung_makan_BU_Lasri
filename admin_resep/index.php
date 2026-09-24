@@ -69,36 +69,44 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
                                 <thead>
                                     <tr>
                                         <th width="5%" class="text-center">No.</th>
-                                        <th width="35%">Nama Menu</th>
-                                        <th width="20%">Harga</th>
+                                        <th width="30%">Nama Menu</th>
+                                        <th width="15%">HPP</th>
+                                        <th width="15%">Harga Jual</th>
                                         <th width="15%" class="text-center">Status</th>
-                                        <th width="25%" class="text-center">Aksi</th>
+                                        <th width="20%" class="text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php
                                     $query_menu = mysqli_query($con, "SELECT menu.*, kategori_menu.nama_kategori AS kategori_nama 
-                                                                  FROM menu 
-                                                                  LEFT JOIN kategori_menu ON menu.kategori_id = kategori_menu.id 
-                                                                  ORDER BY menu.nama_menu ASC");
+                                                                      FROM menu 
+                                                                      LEFT JOIN kategori_menu ON menu.kategori_id = kategori_menu.id 
+                                                                      ORDER BY menu.nama_menu ASC");
                                     $no = 1;
                                     
                                     while ($data = mysqli_fetch_array($query_menu)) {
                                         $id_row = $no; 
                                         $id_primary = $data['id']; 
+
+                                        // Hitung HPP
+                                        $query_hpp = mysqli_query($con, "SELECT SUM(resep_detail.jumlah_butuh * bahan_baku.harga_satuan) AS total_hpp 
+                                                                         FROM resep_detail 
+                                                                         JOIN bahan_baku ON resep_detail.bahan_baku_id = bahan_baku.id 
+                                                                         WHERE resep_detail.menu_id = '$id_primary'");
+                                        $data_hpp = mysqli_fetch_assoc($query_hpp);
+                                        $hpp = $data_hpp['total_hpp'] ?? 0;
                                     ?>
                                     <tr>
                                         <td class="text-center"><?= $no; ?></td>
                                         <td>
-                                            <!-- nama Menuuu -->
                                             <strong><?= htmlspecialchars($data['nama_menu']); ?></strong>
                                             <br>
-                                            <!-- ini buat keterangan di menunya yaa -->
                                             <small class="text-muted" style="font-size: 11px;">
                                                 <i class="material-icons" style="font-size: 11px; vertical-align: middle;">label</i> 
                                                 Kategori: <?= htmlspecialchars($data['kategori_nama'] ?? 'Tanpa Kategori'); ?>
                                             </small>
                                         </td>
+                                        <td>Rp <?= number_format($hpp, 0, ',', '.'); ?></td>
                                         <td>Rp <?= number_format($data['harga'], 0, ',', '.'); ?></td>
                                         <td class="text-center">
                                             <?php if(strtolower($data['status']) == 'tersedia'): ?>
@@ -126,13 +134,17 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
                                                     <p><strong>Daftar Bahan Masakan:</strong></p>
                                                     <ul>
                                                         <?php
-                                                        $query_cek_bahan = mysqli_query($con, "SELECT bahan_baku.nama_bahan, resep_detail.jumlah_butuh, resep_detail.satuan 
-                                                                FROM resep_detail 
-                                                                JOIN bahan_baku ON resep_detail.bahan_baku_id = bahan_baku.id 
-                                                                WHERE resep_detail.menu_id = '$id_primary'");
+                                                        $query_cek_bahan = mysqli_query($con, "SELECT bahan_baku.nama_bahan, 
+                                                                                                    resep_detail.jumlah_butuh, 
+                                                                                                    resep_detail.satuan,
+                                                                                                    (resep_detail.jumlah_butuh * bahan_baku.harga_satuan) AS subtotal
+                                                                                            FROM resep_detail 
+                                                                                            JOIN bahan_baku ON resep_detail.bahan_baku_id = bahan_baku.id 
+                                                                                            WHERE resep_detail.menu_id = '$id_primary'");
                                                         if(mysqli_num_rows($query_cek_bahan) > 0) {
                                                             while($rb = mysqli_fetch_assoc($query_cek_bahan)) {
-                                                                echo '<li>' . htmlspecialchars($rb['nama_bahan']) . ' — <strong>' . $rb['jumlah_butuh'] . ' ' . $rb['satuan'] . '</strong></li>';
+                                                                $subtotal_format = number_format($rb['subtotal'], 0, ',', '.');
+                                                                echo '<li>' . htmlspecialchars($rb['nama_bahan']) . ' — <strong>' . $rb['jumlah_butuh'] . ' ' . $rb['satuan'] . '</strong> (Rp ' . $subtotal_format . ')</li>';
                                                             }
                                                         } else {
                                                             echo '<i>Belum ada data bahan yang dimasukkan untuk menu ini.</i>';
@@ -140,6 +152,7 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
                                                         ?>
                                                     </ul>
                                                     <hr>
+                                                    <p><strong>HPP (Modal):</strong> Rp <?= number_format($hpp, 0, ',', '.'); ?></p>
                                                     <p><strong>Harga Jual:</strong> Rp <?= number_format($data['harga'], 0, ',', '.'); ?></p>
                                                     <p><strong>Status:</strong> <?= ucfirst($data['status']); ?></p>
                                                 </div>
@@ -155,7 +168,7 @@ if (($authority != 'A' && $authority != 'Admin') || $is_2fa_passed !== true) {
                                         $no++;
                                     } 
                                     if(mysqli_num_rows($query_menu) == 0){
-                                        echo '<tr><td colspan="5" class="text-center">Belum ada data menu.</td></tr>';
+                                        echo '<tr><td colspan="6" class="text-center">Belum ada data menu.</td></tr>';
                                     }
                                     ?>
                                 </tbody>
